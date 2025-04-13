@@ -1,0 +1,843 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+    <title>Zolatech</title>
+    <link rel="icon" href="file:///C:/Users/regev/Downloads/Zolatechlogo2.png" type="image/png" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/codemirror.min.css" />
+    <style>
+      :root {
+        --primary-color: #1d1799;
+        --primary-hover: #19169a;
+        --primary-active: #15136e;
+      }
+      body {
+        font-family: 'Poppins', sans-serif; margin: 0; padding: 0; overflow: hidden;
+        background: #e0e0e0; display: flex; justify-content: center; align-items: center; height: 100vh;
+        transition: background 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+      }
+      .container {
+        width: 95%; max-width: 1400px; height: 95vh; background: #fff; border-radius: 16px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.1); position: relative; overflow: hidden; margin: auto;
+        transition: transform 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+      }
+      .container.shifted { transform: translateX(400px); }
+      h1 { margin: 20px; font-size: 42px; color: #222; font-weight: 700; }
+      button {
+        background: var(--primary-color); color: #fff; border: none; border-radius: 12px;
+        padding: 14px 28px; font-size: 18px; font-weight: 600; cursor: pointer;
+        transition: background 0.4s, transform 0.4s, opacity 0.4s;
+      }
+      button:hover { background: var(--primary-hover); transform: scale(1.08); }
+      button:active { background: var(--primary-active); transform: scale(0.98); }
+      /* Neat button styling for modals */
+      .modal .btn-group {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+      .modal .btn-group button {
+        flex: 1;
+        padding: 10px;
+        font-size: 16px;
+        border-radius: 8px;
+        background: var(--primary-color);
+        color: #fff;
+        border: none;
+        cursor: pointer;
+        transition: background 0.3s;
+      }
+      .modal .btn-group button:hover {
+        background: var(--primary-hover);
+      }
+      .welcome-screen, .editor-container {
+        width: 100%; height: 100%; position: absolute; top: 0; left: 0;
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+        transition: opacity 0.5s ease, transform 0.5s ease;
+      }
+      .welcome-screen { background: #fff; z-index: 2; opacity: 0; transform: translateY(20px); }
+      .welcome-screen.animate { opacity: 1; transform: translateY(0); }
+      .welcome-screen.hidden { opacity: 0; transform: translateY(-20px); pointer-events: none; }
+      .welcome-screen p {
+        font-size: 18px; color: #666; margin-bottom: 40px; text-align: center; max-width: 80%; line-height: 1.6;
+      }
+      .editor-container { opacity: 0; transform: translateY(20px); padding: 20px; box-sizing: border-box;
+        background: #fff; z-index: 1; display: flex; flex-direction: column;
+      }
+      .editor-container.animate { opacity: 1; transform: translateY(0); }
+      .header { text-align: center; }
+      .top-toolbar, .main-toolbar { display: flex; align-items: center; transition: all 0.5s ease; }
+      .top-toolbar { justify-content: center; gap: 20px; margin: 10px 0; padding: 5px 0; }
+      #search-btn {
+        background: transparent; border: none; font-size: 22px; color: var(--primary-color);
+        cursor: pointer; transition: transform 0.4s ease;
+      }
+      #search-btn:hover { transform: scale(1.1); }
+      .main-toolbar {
+        gap: 12px; flex-wrap: wrap; justify-content: center; margin-top: auto; padding: 10px 0;
+      }
+      input[type="text"] {
+        padding: 14px; font-size: 16px; border: 1px solid #ddd; border-radius: 8px;
+        transition: border-color 0.3s ease;
+      }
+      input[type="text"]:focus { border-color: var(--primary-color); }
+      .switch-container { display: flex; align-items: center; gap: 8px; }
+      .switch { position: relative; display: inline-block; width: 60px; height: 30px; }
+      .switch input { opacity: 0; width: 0; height: 0; }
+      .slider {
+        position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
+        background-color: #ccc; transition: 0.4s; border-radius: 34px;
+      }
+      .slider:before {
+        position: absolute; content: ""; height: 26px; width: 26px; left: 2px; bottom: 2px;
+        background-color: #fff; transition: 0.4s; border-radius: 50%; box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+      }
+      input:checked + .slider { background: var(--primary-color); }
+      input:checked + .slider:before { transform: translateX(30px); }
+      /* Search Panel (moved to right side) */
+      #search-panel {
+        position: fixed;
+        right: 20px;
+        top: 80px;
+        width: 260px; background: #fff;
+        border: 1px solid #ddd; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        padding: 10px; z-index: 14000;
+        transform: translateX(50px);
+        opacity: 0;
+        pointer-events: none;
+        transition: transform 0.3s ease, opacity 0.3s ease;
+      }
+      #search-panel.show {
+        transform: translateX(0);
+        opacity: 1;
+        pointer-events: auto;
+      }
+      #search-panel h3 { margin: 0 0 8px; font-size: 18px; color: #222; }
+      #search-panel input[type="text"] {
+        width: calc(100% - 20px);
+        margin: 0 0 8px auto;
+        text-align: right;
+        padding: 8px;
+        border: 1px solid #ddd; border-radius: 4px; font-size: 14px;
+      }
+      #search-panel .btn-group {
+        display: flex; justify-content: space-between; margin-bottom: 8px;
+      }
+      #search-panel .btn-group button {
+        flex: 1; margin: 0 2px; font-size: 14px; padding: 6px;
+      }
+      #search-panel button.close-btn {
+        width: 100%; font-size: 14px; padding: 6px; margin-top: 4px;
+      }
+      /* New style for current search highlight */
+      .search-highlight { background: yellow; }
+      .current-search-highlight { background: orange; }
+      /* Preview */
+      #preview-overlay, #save-modal-overlay, #management-modal-overlay, #settings-modal-overlay {
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(0,0,0,0.7); z-index: 9999; display: flex; justify-content: center; align-items: center;
+        opacity: 0; pointer-events: none; transition: opacity 0.5s ease;
+      }
+      #preview-overlay.show, #save-modal-overlay.show, #management-modal-overlay.show, #settings-modal-overlay.show {
+        opacity: 1; pointer-events: auto;
+      }
+      #preview {
+        background: #fefefe; width: 90%; max-width: 1000px; height: 90%; border-radius: 12px;
+        position: relative; overflow: hidden; display: flex; flex-direction: column;
+        box-shadow: 0 8px 30px rgba(0,0,0,0.2); transform: translateY(-50px); transition: transform 0.5s ease;
+      }
+      #preview.show { transform: translateY(0); }
+      .preview-toolbar {
+        background: rgba(0,122,255,0.9); display: flex; align-items: center; padding: 10px 20px;
+        border-radius: 12px 12px 0 0; position: relative; box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+        transition: background 0.3s ease;
+      }
+      .preview-toolbar button {
+        background: transparent; border: none; color: #fff; cursor: pointer; margin-right: 12px;
+        font-size: 18px; padding: 4px 8px; transition: transform 0.3s ease;
+      }
+      .preview-toolbar button:hover { transform: scale(1.1); }
+      #preview-zoom-in::before { content: "+"; }
+      #preview-zoom-out::before { content: "–"; }
+      #preview-fullscreen-btn.not-fullscreen::before { content: "⛶"; }
+      #preview-fullscreen-btn.fullscreen::before { content: "🗗"; }
+      #preview-console-btn::before { content: "⌨"; font-size: 14px; }
+      .preview-tab {
+        margin-left: auto; display: flex; align-items: center; background: #fff;
+        border-radius: 6px; padding: 4px 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+        font-size: 14px; color: #222;
+      }
+      .preview-tab img { width: 16px; height: 16px; margin-right: 6px; }
+      .preview-body { flex: 1; display: flex; position: relative; overflow: hidden; }
+      #preview-frame {
+        flex: 1; border: none; transition: margin-left 0.4s ease, transform 0.4s ease;
+        transform: scale(1); transform-origin: center;
+      }
+      /* Enhanced Console with exit animation */
+      #preview-console {
+        width: 200px; background: #222; color: #0f0; padding: 10px; font-family: monospace;
+        overflow-y: auto; opacity: 0; transform: translateY(20px);
+        transition: opacity 0.4s ease, transform 0.4s ease;
+      }
+      #preview-console.visible {
+        opacity: 1; transform: translateY(0);
+      }
+      /* Modal */
+      .modal {
+        background: #fff; border-radius: 12px; padding: 20px; width: 90%; max-width: 400px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.2); transform: scale(0.9); opacity: 0;
+        transition: transform 0.5s ease, opacity 0.5s ease;
+      }
+      .modal.show { transform: scale(1); opacity: 1; }
+      .modal h2 { margin-top: 0; font-size: 24px; color: #222; }
+      .modal input[type="text"], .modal select {
+        width: 100%; margin: 10px 0; padding: 10px; font-size: 16px; border: 1px solid #ddd; border-radius: 8px;
+        transition: border-color 0.3s ease;
+      }
+      .modal input[type="text"]:focus, .modal select:focus { border-color: var(--primary-color); }
+      .modal .modal-buttons { display: flex; justify-content: flex-end; gap: 12px; margin-top: 20px; }
+      /* Files Panel */
+      #files-panel {
+        position: fixed; top: 0; left: -400px; width: 400px; height: 100%; background: #f9f9f9;
+        box-shadow: 2px 0 10px rgba(0,0,0,0.2); z-index: 10000; transition: left 0.5s ease;
+        padding: 20px; box-sizing: border-box; overflow-y: auto;
+      }
+      #files-panel.show { left: 0; }
+      #close-files-btn {
+        background: transparent; border: none; font-size: 24px; color: var(--primary-color);
+        cursor: pointer; position: absolute; top: 10px; right: 10px; opacity: 0; transition: opacity 0.5s ease;
+      }
+      #files-panel.show #close-files-btn { opacity: 1; }
+      #files-panel h2 { margin-top: 0; font-size: 24px; color: #222; }
+      .new-folder-inline { margin-bottom: 10px; display: flex; gap: 6px; align-items: center; }
+      .new-folder-inline input[type="text"] {
+        flex: 1; padding: 10px; font-size: 16px; border: 1px solid #ddd; border-radius: 8px;
+        transition: border-color 0.3s ease;
+      }
+      .new-folder-inline input[type="text"]:focus { border-color: var(--primary-color); }
+      .folder-group { margin-bottom: 10px; }
+      .folder-header {
+        display: flex; justify-content: space-between; align-items: center; cursor: pointer;
+        padding: 6px 0; font-size: 18px; font-weight: 600; transition: background 0.3s ease;
+      }
+      .folder-header:hover { background: #e0e0e0; border-radius: 6px; }
+      .folder-header .toggle-arrow { transition: transform 0.3s ease; }
+      .folder-files { display: none; margin-left: 10px; }
+      .file-row {
+        display: flex; justify-content: space-between; align-items: center; padding: 6px 0;
+        border-bottom: 1px solid #ddd; font-size: 16px; transition: background 0.3s ease;
+      }
+      .file-row:hover { background: #f0f0f0; }
+      .file-row:last-child { border-bottom: none; }
+      .file-row button {
+        background: none; border: none; color: var(--primary-color); cursor: pointer;
+        font-size: 16px; transition: transform 0.3s ease;
+      }
+      .file-row button:hover { transform: scale(1.05); }
+      .friendly-msg { text-align: center; color: #666; margin-top: 20px; font-size: 16px; }
+      #alert-box {
+        position: fixed; top: 20px; right: 20px; background: var(--primary-color); color: #fff;
+        padding: 12px 20px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        opacity: 0; transition: opacity 0.3s ease; z-index: 13000;
+      }
+      #alert-box.show { opacity: 1; }
+      /* Settings Modal Shortcuts & Layout */
+      #settings-modal .settings-content {
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+      }
+      #settings-modal .shortcuts {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        background: #f4f4f4;
+        padding: 10px;
+        border-radius: 8px;
+        font-size: 14px;
+      }
+      #settings-modal .shortcuts p {
+        margin: 0;
+        flex: 1 1 45%;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container" id="main-container">
+      <div class="welcome-screen" id="welcome-screen">
+        <h1>Welcome to Zolatech</h1>
+        <p>Your sleek, intuitive HTML coding tool with an effortless cloud file system</p>
+        <button onclick="showEditor()">Let's Code</button>
+      </div>
+      <div class="editor-container" id="editor-container">
+        <div class="header"><h1>Zolatech</h1></div>
+        <div class="top-toolbar" id="top-toolbar">
+          <div class="switch-container">
+            <label for="autosave-toggle">Autosave</label>
+            <label class="switch"><input type="checkbox" id="autosave-toggle" /><span class="slider"></span></label>
+          </div>
+          <button id="search-btn" onclick="openSearchPanel()">🔍</button>
+          <button id="settings-btn" onclick="openSettingsModal()">⚙</button>
+        </div>
+        <textarea id="editor"></textarea>
+        <div class="main-toolbar" id="main-toolbar">
+          <input type="text" id="filename" placeholder="File Name" />
+          <button onclick="newFile()">New File</button>
+          <button onclick="downloadCode()">Download</button>
+          <button onclick="copyCode()">Copy</button>
+          <button onclick="previewCode()">Preview</button>
+          <button onclick="openSaveModal()">Save Locally</button>
+          <button id="files-toggle-btn" onclick="toggleFilesPanel()">Files</button>
+          <button id="update-btn" onclick="updateFile()">Update File</button>
+        </div>
+      </div>
+    </div>
+    <div id="search-panel">
+      <h3>Search</h3>
+      <input type="text" id="search-input" placeholder="Search term" />
+      <div class="btn-group">
+        <button id="search-all-btn" onclick="searchAll()"><span>&#x1F50D;</span> Search</button>
+        <button id="prev-btn" onclick="searchPrev()" style="display:none;"><span>&#x25C0;</span> Prev</button>
+        <button id="next-btn" onclick="searchNext()" style="display:none;"><span>&#x25B6;</span> Next</button>
+      </div>
+      <button class="close-btn" onclick="closeSearchPanel()"><span>&#x2715;</span> Close</button>
+    </div>
+    <div id="preview-overlay">
+      <div id="preview">
+        <div class="preview-toolbar" id="preview-toolbar">
+          <button id="preview-exit-btn" title="Exit Preview" onclick="exitPreview()">✕</button>
+          <button id="preview-fullscreen-btn" class="not-fullscreen" title="Enter Full Screen" onclick="togglePreviewFullScreen()"></button>
+          <button id="preview-console-btn" title="Toggle Console" onclick="toggleConsole()"></button>
+          <button id="preview-zoom-in" title="Zoom In" onclick="zoomPreview('in')"></button>
+          <button id="preview-zoom-out" title="Zoom Out" onclick="zoomPreview('out')"></button>
+          <div class="preview-tab">
+            <img id="preview-tab-icon" src="https://www.google.com/favicon.ico" alt="" />
+            <span id="preview-tab-title">File Preview</span>
+          </div>
+        </div>
+        <div class="preview-body">
+          <iframe id="preview-frame"></iframe>
+          <div id="preview-console">Console output here</div>
+        </div>
+      </div>
+    </div>
+    <div id="alert-box"></div>
+    <div id="save-modal-overlay">
+      <div id="save-modal" class="modal">
+        <h2>Save File</h2>
+        <input type="text" id="modal-filename" placeholder="File Name" />
+        <label for="folder-select">Select Folder</label>
+        <select id="folder-select" onchange="toggleNewFolderInput(this.value)">
+          <option value="">No Folder</option>
+        </select>
+        <div id="new-folder-input" style="display:none;margin-top:10px;">
+          <input type="text" id="new-folder-name-inline" placeholder="New folder name" />
+        </div>
+        <div class="btn-group">
+          <button onclick="closeSaveModal()">Cancel</button>
+          <button onclick="saveLocalFile()">Save</button>
+        </div>
+      </div>
+    </div>
+    <div id="files-panel">
+      <button id="close-files-btn" onclick="toggleFilesPanel()">✕</button>
+      <h2>My Cloud Files</h2>
+      <div class="new-folder-inline">
+        <input type="text" id="new-folder-inline" placeholder="New folder name" />
+        <button onclick="createFolderInline()">Create</button>
+      </div>
+      <div id="files-list"></div>
+      <div id="no-files-msg" class="friendly-msg" style="display:none;">
+        No files found. Save work to build your cloud
+      </div>
+    </div>
+    <div id="management-modal-overlay">
+      <div id="management-modal" class="modal">
+        <h2 id="management-title"></h2>
+        <div id="management-form"></div>
+        <div class="btn-group">
+          <button onclick="saveManagementChanges()">Save Changes</button>
+          <button onclick="triggerDelete()">Delete</button>
+          <button onclick="closeManagementModal()">Close</button>
+        </div>
+        <div id="confirm-delete" style="display:none;">
+          <p>Are you sure you want to delete this item</p>
+          <div class="btn-group">
+            <button onclick="confirmDeletion()">Yes, Delete</button>
+            <button onclick="cancelDeletion()">Cancel</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div id="settings-modal-overlay">
+      <div id="settings-modal" class="modal">
+        <h2>Settings</h2>
+        <p>Version: 5.0</p>
+        <div class="settings-content">
+          <div class="shortcuts">
+            <p><strong>Ctrl + F:</strong> Toggle Search Panel</p>
+            <p><strong>Ctrl + S:</strong> Save Locally</p>
+            <p><strong>Alt + F:</strong> Toggle Files Panel</p>
+            <p><strong>Ctrl + P:</strong> Preview Code</p>
+            <p><strong>Ctrl + N:</strong> New File</p>
+            <p><strong>Ctrl + ,:</strong> Open Settings</p>
+          </div>
+          <div class="color-palette" style="display:flex; flex-direction:column; gap:10px; align-items:center; border-top:1px solid #ddd; padding-top:20px;">
+            <label for="color-picker" style="width:100%; text-align:left;">Choose Primary Color</label>
+            <input type="color" id="color-picker" style="width:50px;height:50px;border:none;cursor:pointer;" />
+            <button onclick="resetColor()">Reset to Default</button>
+          </div>
+          <button id="delete-data-btn" onclick="document.querySelector('.confirm-dialog').style.display='block'">Delete All Data</button>
+          <div class="confirm-dialog" style="margin-top:20px;padding:15px;background:#d0d0d0;color:#222;border:1px solid #bbb;border-radius:8px;text-align:center;display:none;">
+            <p>Are you sure you want to delete all saved data</p>
+            <div class="btn-group">
+              <button onclick="confirmDeleteData()">Yes</button>
+              <button onclick="cancelDeleteData()">No</button>
+            </div>
+          </div>
+          <button onclick="closeSettingsModal()">Close</button>
+        </div>
+      </div>
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/mode/htmlmixed/htmlmixed.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/mode/xml/xml.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/mode/javascript/javascript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/mode/css/css.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/addon/search/searchcursor.min.js"></script>
+    <script>
+      const editor = CodeMirror.fromTextArea(document.getElementById('editor'), {
+        mode: 'htmlmixed',
+        lineNumbers: true,
+        theme: 'default'
+      });
+      editor.setSize("100%", "100%");
+      let currentFileIndex = null, autosaveInterval = null, managementMode = null, managementIndex = null,
+          previewZoom = 1, searchMatches = [], currentMatchIndex = -1, searchMarkers = [];
+      const $ = sel => document.getElementById(sel);
+      
+      const openModal = (overlay, modal) => { $(overlay).classList.add('show'); setTimeout(() => $(modal).classList.add('show'), 10); };
+      const closeModal = (overlay, modal) => { $(modal).classList.remove('show'); setTimeout(() => $(overlay).classList.remove('show'), 500); };
+      
+      // Clear search markers and matches
+      const clearSearchMarks = () => {
+        searchMarkers.forEach(marker => marker.clear());
+        searchMarkers = [];
+        searchMatches = [];
+      };
+      
+      // Update highlights: mark all matches in yellow except the current one (orange)
+      const updateSearchHighlights = () => {
+        searchMarkers.forEach(marker => marker.clear());
+        searchMarkers = [];
+        for(let i = 0; i < searchMatches.length; i++){
+          let cls = (i === currentMatchIndex) ? 'current-search-highlight' : 'search-highlight';
+          let marker = editor.markText(searchMatches[i].from, searchMatches[i].to, { className: cls });
+          searchMarkers.push(marker);
+        }
+      };
+      
+      const darkenColor = (hex, pct) => {
+        let num = parseInt(hex.slice(1),16), amt = Math.round(2.55 * pct),
+            R = Math.min(255, Math.max(0, (num >> 16) - amt)),
+            G = Math.min(255, Math.max(0, (num >> 8 & 0x00FF) - amt)),
+            B = Math.min(255, Math.max(0, (num & 0x0000FF) - amt));
+        return "#" + ((1 << 24) + (R << 16) + (G << 8) + B).toString(16).slice(1);
+      };
+      const updateShades = primary => {
+        document.documentElement.style.setProperty('--primary-hover', darkenColor(primary, 10));
+        document.documentElement.style.setProperty('--primary-active', darkenColor(primary, 20));
+      };
+      $('color-picker').addEventListener('input', e => {
+        let c = e.target.value;
+        document.documentElement.style.setProperty('--primary-color', c);
+        localStorage.setItem('primaryColor', c);
+        updateShades(c);
+        showAlert("Primary color updated");
+      });
+      const resetColor = () => {
+        let d = "#1d1799";
+        document.documentElement.style.setProperty('--primary-color', d);
+        localStorage.setItem('primaryColor', d);
+        $('color-picker').value = d;
+        updateShades(d);
+        showAlert("Primary color reset to default");
+      };
+      if(localStorage.getItem('primaryColor')) {
+        let s = localStorage.getItem('primaryColor');
+        document.documentElement.style.setProperty('--primary-color', s);
+        updateShades(s);
+      }
+      
+      // Keyboard shortcuts
+      window.addEventListener("keydown", e => {
+        // Ctrl+F: Toggle Search Panel
+        if(e.ctrlKey && e.key.toLowerCase() === 'f'){
+          e.preventDefault();
+          $('search-panel').classList.contains('show') ? closeSearchPanel() : openSearchPanel();
+        }
+        // Ctrl+S: Save Locally
+        else if(e.ctrlKey && e.key.toLowerCase() === 's'){
+          e.preventDefault();
+          openSaveModal();
+        }
+        // Alt+F: Toggle Files Panel
+        else if(e.altKey && e.key.toLowerCase() === 'f'){
+          e.preventDefault();
+          toggleFilesPanel();
+        }
+        // Ctrl+P: Preview Code
+        else if(e.ctrlKey && e.key.toLowerCase() === 'p'){
+          e.preventDefault();
+          previewCode();
+        }
+        // Ctrl+N: New File
+        else if(e.ctrlKey && e.key.toLowerCase() === 'n'){
+          e.preventDefault();
+          newFile();
+        }
+        // Ctrl+,: Open Settings Modal
+        else if(e.ctrlKey && e.key === ','){
+          e.preventDefault();
+          openSettingsModal();
+        }
+      });
+      
+      window.onload = () => {
+        setTimeout(() => $('welcome-screen').classList.add('animate'), 100);
+        populateFolderDropdown();
+        populateFilesPanel();
+        $('color-picker').value = getComputedStyle(document.documentElement).getPropertyValue('--primary-color').trim();
+      };
+      const showEditor = () => {
+        $('welcome-screen').classList.add('hidden');
+        setTimeout(() => { $('editor-container').classList.add('animate'); editor.refresh(); }, 500);
+      };
+      const downloadCode = () => {
+        let content = editor.getValue(), fname = $('filename').value || 'zolatech-code',
+            blob = new Blob([content], { type: 'text/html' }),
+            link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = fname + '.html';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        showAlert("File downloaded successfully");
+      };
+      const copyCode = () => {
+        navigator.clipboard.writeText(editor.getValue()).then(() => showAlert("Code copied to clipboard"));
+      };
+      const previewCode = () => {
+        let html = editor.getValue(), parser = new DOMParser(), doc = parser.parseFromString(html, "text/html"),
+            title = doc.querySelector("title") ? doc.querySelector("title").textContent : "No Title",
+            icon = doc.querySelector("link[rel='icon']") ? doc.querySelector("link[rel='icon']").getAttribute("href") : "https://www.google.com/favicon.ico";
+        $('preview-frame').srcdoc = html;
+        $('preview-tab-title').textContent = title;
+        $('preview-tab-icon').src = icon;
+        $('preview-overlay').classList.add('show');
+        setTimeout(() => $('preview').classList.add('show'), 10);
+      };
+      const exitPreview = () => {
+        if(document.fullscreenElement) document.exitFullscreen();
+        $('preview').classList.remove('show');
+        setTimeout(() => $('preview-overlay').classList.remove('show'), 500);
+      };
+      const togglePreviewFullScreen = () => {
+        let p = $('preview'), b = $('preview-fullscreen-btn');
+        if(!document.fullscreenElement && !document.webkitFullscreenElement) {
+          p.requestFullscreen ? p.requestFullscreen() : p.webkitRequestFullscreen && p.webkitRequestFullscreen();
+        } else {
+          document.exitFullscreen ? document.exitFullscreen() : document.webkitExitFullscreen && document.webkitExitFullscreen();
+        }
+      };
+      // Listen for fullscreen changes and update the fullscreen button accordingly.
+      document.addEventListener("fullscreenchange", () => {
+        let b = $('preview-fullscreen-btn');
+        if(document.fullscreenElement) {
+          b.classList.remove('not-fullscreen');
+          b.classList.add('fullscreen');
+          b.title = "Exit Full Screen";
+        } else {
+          b.classList.remove('fullscreen');
+          b.classList.add('not-fullscreen');
+          b.title = "Enter Full Screen";
+        }
+      });
+      let consoleVisible = false;
+      const toggleConsole = () => {
+        let c = $('preview-console'), f = $('preview-frame');
+        if(!consoleVisible){ 
+          c.classList.add('visible'); 
+          f.style.marginLeft = '200px'; 
+          showAlert("Console on"); 
+          consoleVisible = true; 
+        }
+        else { 
+          // Animate exit
+          c.classList.remove('visible'); 
+          setTimeout(() => { f.style.marginLeft = '0'; }, 400);
+          showAlert("Console off"); 
+          consoleVisible = false; 
+        }
+      };
+      const zoomPreview = dir => {
+        previewZoom *= (dir === 'in' ? 1.1 : 0.9);
+        $('preview-frame').style.transform = "scale(" + previewZoom + ")";
+      };
+      const showAlert = msg => {
+        let a = $('alert-box');
+        a.textContent = msg; a.classList.add('show');
+        setTimeout(() => a.classList.remove('show'), 3000);
+      };
+      $('autosave-toggle').addEventListener('change', function(){
+        localStorage.setItem('autosaveSetting', this.checked);
+        currentFileIndex !== null && this.checked ? startAutosave() : stopAutosave();
+      });
+      const startAutosave = () => { stopAutosave(); autosaveInterval = setInterval(() => updateFile(true), 5000); };
+      const stopAutosave = () => { autosaveInterval && clearInterval(autosaveInterval); };
+      const openSaveModal = () => { $('modal-filename').value = ''; $('folder-select').value = ''; $('new-folder-input').style.display = 'none'; openModal('save-modal-overlay', 'save-modal'); };
+      const closeSaveModal = () => closeModal('save-modal-overlay', 'save-modal');
+      const toggleNewFolderInput = v => { $('new-folder-input').style.display = (v === 'new') ? 'block' : 'none'; };
+      const populateFolderDropdown = () => {
+        let s = $('folder-select'), folders = JSON.parse(localStorage.getItem('nexusFolders')) || ["default"];
+        s.innerHTML = '<option value="">No Folder</option>' + folders.map(f => `<option value="${f}">${f}</option>`).join('') + '<option value="new">New Folder...</option>';
+      };
+      const saveLocalFile = () => {
+        let name = $('modal-filename').value.trim() || 'untitled',
+            fs = $('folder-select').value,
+            folder = fs === 'new' ? ($('new-folder-name-inline').value.trim() || 'default') : (fs || 'default'),
+            content = editor.getValue(),
+            files = JSON.parse(localStorage.getItem('nexusFiles')) || [];
+        if(fs === 'new'){
+          let folders = JSON.parse(localStorage.getItem('nexusFolders')) || ["default"];
+          if(!folders.includes(folder)) { folders.push(folder); localStorage.setItem('nexusFolders', JSON.stringify(folders)); }
+          populateFolderDropdown();
+        }
+        files.push({ folder, filename: name, content, time: Date.now() });
+        localStorage.setItem('nexusFiles', JSON.stringify(files));
+        currentFileIndex = files.length - 1;
+        $('filename').value = name;
+        closeSaveModal();
+        populateFilesPanel();
+        $('update-btn').style.display = 'inline-block';
+        $('autosave-toggle').checked && startAutosave();
+        showAlert("File saved to cloud");
+      };
+      const updateFile = autosave => {
+        if(currentFileIndex === null) return;
+        let files = JSON.parse(localStorage.getItem('nexusFiles'));
+        files[currentFileIndex].content = editor.getValue();
+        files[currentFileIndex].time = Date.now();
+        localStorage.setItem('nexusFiles', JSON.stringify(files));
+        !autosave && showAlert("File updated");
+      };
+      const toggleFilesPanel = () => {
+        let p = $('files-panel'), c = $('main-container'), b = $('files-toggle-btn');
+        if(p.classList.contains('show')){
+          p.classList.remove('show'); c.classList.remove('shifted');
+          b.style.opacity = 1; b.style.pointerEvents = 'auto';
+        } else {
+          p.classList.add('show'); c.classList.add('shifted');
+          b.style.opacity = 0; b.style.pointerEvents = 'none';
+        }
+      };
+      const populateFilesPanel = () => {
+        let list = $('files-list'), files = JSON.parse(localStorage.getItem('nexusFiles')) || [],
+            folders = JSON.parse(localStorage.getItem('nexusFolders')) || ["default"], groups = {};
+        files.forEach((f, i) => {
+          let key = f.folder || 'No Folder';
+          groups[key] = groups[key] || [];
+          groups[key].push({ index: i, filename: f.filename });
+        });
+        folders.forEach(f => { groups[f] = groups[f] || []; });
+        list.innerHTML = "";
+        for(let grp in groups){
+          let dg = document.createElement('div');
+          dg.className = 'folder-group';
+          let h = document.createElement('div');
+          h.className = 'folder-header';
+          h.innerHTML = `<span>${grp}</span><span class="toggle-arrow">&#9660;</span><button onclick="openManagementModal('folder','${grp}'); event.stopPropagation();">&#8942;</button>`;
+          h.onclick = function(e){
+            if(e.target.tagName.toLowerCase() === 'button') return;
+            let fdiv = this.nextElementSibling;
+            fdiv.style.display = fdiv.style.display === 'block' ? 'none' : 'block';
+            this.querySelector('.toggle-arrow').style.transform = fdiv.style.display === 'block' ? 'rotate(180deg)' : 'rotate(0)';
+          };
+          dg.appendChild(h);
+          let fd = document.createElement('div');
+          fd.className = 'folder-files'; fd.style.display = 'none';
+          groups[grp].forEach(item => {
+            let r = document.createElement('div');
+            r.className = 'file-row';
+            r.innerHTML = `<span>${item.filename}</span><div><button onclick="loadFile(${item.index})">Load</button> <button onclick="openManagementModal('file',${item.index})">&#8942;</button></div>`;
+            fd.appendChild(r);
+          });
+          dg.appendChild(fd);
+          list.appendChild(dg);
+        }
+      };
+      const loadFile = i => {
+        let files = JSON.parse(localStorage.getItem('nexusFiles'));
+        if(files[i]){
+          editor.setValue(files[i].content);
+          $('filename').value = files[i].filename;
+          currentFileIndex = i;
+          $('update-btn').style.display = 'inline-block';
+          $('autosave-toggle').checked && startAutosave();
+          showAlert("File loaded from cloud");
+        }
+      };
+      const openManagementModal = (type, id) => {
+        managementMode = type; managementIndex = id;
+        $('management-title').textContent = type === 'file' ? "Manage File" : "Manage Folder";
+        let form = $('management-form');
+        form.style.display = 'block';
+        document.querySelector('#management-modal .btn-group').style.display = 'flex';
+        $('confirm-delete').style.display = 'none';
+        if(type === 'file'){
+          let files = JSON.parse(localStorage.getItem('nexusFiles')), f = files[id];
+          form.innerHTML = `<label>File Name:</label><input type="text" id="management-name" value="${f.filename}"><label>Folder:</label><select id="management-folder"></select>`;
+          let sel = $('management-folder'),
+              fols = JSON.parse(localStorage.getItem('nexusFolders')) || ["default"];
+          sel.innerHTML = `<option value="">No Folder</option>` + fols.map(x => `<option value="${x}" ${x===f.folder?"selected":""}>${x}</option>`).join('') + `<option value="new">New Folder...</option>`;
+        } else {
+          form.innerHTML = `<label>Folder Name:</label><input type="text" id="management-name" value="${id}">`;
+        }
+        openModal('management-modal-overlay','management-modal');
+      };
+      const closeManagementModal = () => closeModal('management-modal-overlay','management-modal');
+      const saveManagementChanges = () => {
+        if(managementMode === 'file'){
+          let n = $('management-name').value.trim(),
+              nf = $('management-folder').value;
+          if(nf === 'new'){
+            nf = prompt("Enter new folder name:","") || "default";
+            nf = nf.trim() || "default";
+            let fols = JSON.parse(localStorage.getItem('nexusFolders')) || ["default"];
+            if(!fols.includes(nf)) { fols.push(nf); localStorage.setItem('nexusFolders', JSON.stringify(fols)); }
+          }
+          let files = JSON.parse(localStorage.getItem('nexusFiles'));
+          files[managementIndex].filename = n;
+          files[managementIndex].folder = nf || 'No Folder';
+          localStorage.setItem('nexusFiles', JSON.stringify(files));
+          populateFilesPanel();
+          showAlert("File updated");
+        } else {
+          let nn = $('management-name').value.trim(),
+              fols = JSON.parse(localStorage.getItem('nexusFolders')) || ["default"];
+          if(fols.includes(nn) && nn !== managementIndex) { showAlert("Folder name already exists"); return; }
+          fols = fols.map(x => x===managementIndex?nn:x);
+          localStorage.setItem('nexusFolders', JSON.stringify(fols));
+          let files = JSON.parse(localStorage.getItem('nexusFiles'));
+          files.forEach(f => { if(f.folder === managementIndex) f.folder = nn; });
+          localStorage.setItem('nexusFiles', JSON.stringify(files));
+          populateFilesPanel();
+          showAlert("Folder updated");
+        }
+        closeManagementModal();
+      };
+      const triggerDelete = () => {
+        $('management-form').style.display = 'none';
+        document.querySelector('#management-modal .btn-group').style.display = 'none';
+        $('confirm-delete').style.display = 'block';
+      };
+      const confirmDeletion = () => {
+        if(managementMode === 'file'){
+          let files = JSON.parse(localStorage.getItem('nexusFiles'));
+          files.splice(managementIndex,1);
+          localStorage.setItem('nexusFiles', JSON.stringify(files));
+          if(currentFileIndex === managementIndex) { currentFileIndex = null; $('update-btn').style.display = 'none'; }
+          populateFilesPanel();
+          showAlert("File deleted");
+        } else {
+          let folderName = managementIndex,
+              fols = (JSON.parse(localStorage.getItem('nexusFolders')) || []).filter(f => f !== folderName);
+          localStorage.setItem('nexusFolders', JSON.stringify(fols));
+          let files = (JSON.parse(localStorage.getItem('nexusFiles')) || []).filter(f => f.folder !== folderName);
+          localStorage.setItem('nexusFiles', JSON.stringify(files));
+          populateFilesPanel();
+          showAlert("Folder deleted");
+        }
+        closeManagementModal();
+      };
+      const cancelDeletion = () => {
+        $('confirm-delete').style.display = 'none';
+        $('management-form').style.display = 'block';
+        document.querySelector('#management-modal .btn-group').style.display = 'flex';
+      };
+      const createFolderInline = () => {
+        let input = $('new-folder-inline'), newFolder = input.value.trim();
+        if(newFolder){
+          let fols = JSON.parse(localStorage.getItem('nexusFolders')) || ["default"];
+          if(!fols.includes(newFolder)) { fols.push(newFolder); localStorage.setItem('nexusFolders', JSON.stringify(fols)); populateFolderDropdown(); showAlert("Folder created"); }
+          else { showAlert("Folder already exists"); }
+          input.value = '';
+          populateFilesPanel();
+        }
+      };
+      const openSettingsModal = () => openModal('settings-modal-overlay','settings-modal');
+      const closeSettingsModal = () => { closeModal('settings-modal-overlay','settings-modal'); document.querySelector('.confirm-dialog').style.display='none'; };
+      const confirmDeleteData = () => {
+        localStorage.clear();
+        localStorage.setItem('nexusFolders', JSON.stringify(["default"]));
+        localStorage.setItem('nexusFiles', JSON.stringify([]));
+        closeSettingsModal();
+        populateFilesPanel();
+        showAlert("All data deleted");
+      };
+      const cancelDeleteData = () => { document.querySelector('.confirm-dialog').style.display='none'; };
+      const newFile = () => {
+        stopAutosave();
+        editor.setValue("");
+        $('filename').value = "";
+        currentFileIndex = null;
+        $('update-btn').style.display = 'none';
+        showAlert("New file opened");
+      };
+      
+      // Search Panel functions
+      const openSearchPanel = () => { 
+        $('search-panel').classList.add('show'); 
+        clearSearchMarks(); 
+        currentMatchIndex = -1; 
+      };
+      const closeSearchPanel = () => { 
+        clearSearchMarks(); 
+        $('search-panel').classList.remove('show'); 
+      };
+      const searchAll = () => {
+        clearSearchMarks();
+        currentMatchIndex = -1;
+        let query = $('search-input').value;
+        if(!query)return;
+        let cursor = editor.getSearchCursor(query, { line:0, ch:0 }, { caseFold: true });
+        while(cursor.findNext()){
+          searchMatches.push({ from: cursor.from(), to: cursor.to() });
+        }
+        if(searchMatches.length){
+          currentMatchIndex = 0;
+          updateSearchHighlights();
+          editor.scrollIntoView({ from: searchMatches[0].from, to: searchMatches[0].to }, 200);
+          $('next-btn').style.display = searchMatches.length > 1 ? 'block' : 'none';
+          $('prev-btn').style.display = searchMatches.length > 1 ? 'block' : 'none';
+          showAlert(searchMatches.length + " match(es) found");
+        } else {
+          showAlert("No matches found");
+        }
+      };
+      const searchNext = () => { 
+        if(!searchMatches.length)return; 
+        currentMatchIndex = (currentMatchIndex+1) % searchMatches.length; 
+        updateSearchHighlights();
+        editor.scrollIntoView({ from: searchMatches[currentMatchIndex].from, to: searchMatches[currentMatchIndex].to }, 200); 
+      };
+      const searchPrev = () => { 
+        if(!searchMatches.length)return; 
+        currentMatchIndex = (currentMatchIndex-1+searchMatches.length) % searchMatches.length; 
+        updateSearchHighlights();
+        editor.scrollIntoView({ from: searchMatches[currentMatchIndex].from, to: searchMatches[currentMatchIndex].to }, 200); 
+      };
+    </script>
+  </body>
+</html>
