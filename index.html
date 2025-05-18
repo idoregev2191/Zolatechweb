@@ -1,151 +1,136 @@
 <!DOCTYPE html>
 <html lang="he">
 <head>
-  <meta charset="UTF-8">
-  <title>FaceID Vision</title>
-  <link rel="icon" href="https://i.postimg.cc/9rnTgGv6/103a204a-164b-4010-9a60-dc4ba2b34d71.png">
+  <meta charset="UTF-8" />
+  <title>Face ID Vision – GitHub Pages Ready v2</title>
+  <link rel="icon" href="https://i.postimg.cc/9rnTgGv6/103a204a-164b-4010-9a60-dc4ba2b34d71.png" />
   <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-    }
-    body {
-      background: linear-gradient(145deg, #ecf1f7, #f9fbff);
-      overflow: hidden;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-    }
-    .glass {
-      backdrop-filter: blur(20px);
-      background: rgba(255, 255, 255, 0.6);
-      border-radius: 32px;
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-      padding: 40px;
-      width: 400px;
-      max-width: 90%;
-      text-align: center;
-      animation: fadeIn 1s ease;
-    }
-    video {
-      border-radius: 20px;
-      margin: 20px 0;
-      width: 100%;
-    }
-    button {
-      padding: 12px 24px;
-      background-color: #007aff;
-      border: none;
-      border-radius: 14px;
-      color: white;
-      font-weight: bold;
-      cursor: pointer;
-      margin-top: 10px;
-      transition: background 0.3s;
-    }
-    button:hover {
-      background-color: #0051c8;
-    }
-    h1 {
-      font-size: 24px;
-      margin-bottom: 10px;
-    }
-    p {
-      margin-top: 10px;
-      color: #333;
-    }
-    @keyframes fadeIn {
-      from {opacity: 0; transform: scale(0.95);}
-      to {opacity: 1; transform: scale(1);}
-    }
+    /* (שמתי כאן את אותו עיצוב VisionOS מהמימוש הקודם) */
+    * { margin:0; padding:0; box-sizing:border-box; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;}
+    body{display:flex;align-items:center;justify-content:center;height:100vh;background:linear-gradient(145deg,#ecf1f7,#f9fbff);}
+    .glass{backdrop-filter:blur(20px);background:rgba(255,255,255,0.65);border-radius:32px;box-shadow:0 10px 30px rgba(0,0,0,0.1);padding:40px;width:400px;max-width:90vw;text-align:center;animation:fadeIn 1s;}
+    @keyframes fadeIn{from{opacity:0;transform:scale(.95);}to{opacity:1;transform:scale(1);}}
+    video{width:100%;max-height:300px;border-radius:20px;background:#000;margin:20px 0;object-fit:cover;}
+    button{padding:12px 24px;margin:5px;border:none;border-radius:14px;font-weight:600;cursor:pointer;user-select:none;transition:.3s;}
+    button:disabled{background:#aac8ff;cursor:not-allowed;}
+    #registerBtn{background:#007aff;color:#fff;}
+    #registerBtn:hover:not(:disabled){background:#0051c8;}
+    #authBtn{background:#34c759;color:#fff;}
+    #authBtn:hover:not(:disabled){background:#1a9d48;}
+    h1{margin-bottom:10px;font-size:26px;color:#222;}
+    #status{margin-top:15px;min-height:24px;font-weight:500;color:#333;}
   </style>
 </head>
 <body>
-  <div class="glass" id="ui">
-    <h1>Face ID Vision</h1>
-    <video id="video" autoplay muted></video>
-    <button onclick="register()">🔐 רישום פנים</button>
-    <button onclick="authenticate()">🔓 זיהוי פנים</button>
-    <p id="status">מוכן לפעולה...</p>
+  <div class="glass">
+    <h1>Face ID Vision v2</h1>
+    <video id="video" autoplay muted playsinline></video>
+    <div>
+      <button id="registerBtn" disabled>🔐 רישום פנים</button>
+      <button id="authBtn" disabled>🔓 זיהוי פנים</button>
+    </div>
+    <p id="status">⏳ טוען מודלים…</p>
   </div>
 
-  <script defer src="https://cdn.jsdelivr.net/npm/face-api.js"></script>
+  <!-- טען את face-api.js מה־UNPKG עם defer -->
+  <script defer src="https://unpkg.com/face-api.js@0.22.2/dist/face-api.min.js"></script>
   <script>
     const video = document.getElementById('video');
     const status = document.getElementById('status');
-
-    let storedDescriptor = null;
+    const registerBtn = document.getElementById('registerBtn');
+    const authBtn = document.getElementById('authBtn');
+    let modelsLoaded = false;
 
     async function loadModels() {
-      const MODEL_URL = 'https://cdn.jsdelivr.net/npm/face-api.js/models';
-      await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
-      await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
-      await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
+      const MODEL_URL = 'https://justadudewhohacks.github.io/face-api.js/models';
+      try {
+        console.log('Loading models from', MODEL_URL);
+        await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
+        await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
+        await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
+        console.log('Models loaded');
+        status.textContent = "✅ מודלים נטענו! מתכונן למצלמה…";
+        modelsLoaded = true;
+        registerBtn.disabled = false;
+        authBtn.disabled = false;
+      } catch (e) {
+        console.error('Error loading models:', e);
+        status.textContent = "❌ טעינת מודלים נכשלה: " + e.message;
+      }
     }
 
     async function startVideo() {
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: {} });
+        console.log('Requesting camera access');
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode:"user" } });
         video.srcObject = stream;
+        console.log('Camera stream started');
+        return true;
       } catch (e) {
-        alert("הגישה למצלמה נדחתה.");
+        console.error('camera error:', e);
+        status.textContent = "❌ גישה למצלמה נדחתה. בדוק הרשאות.";
+        registerBtn.disabled = true;
+        authBtn.disabled = true;
+        return false;
       }
     }
 
-    function saveDescriptor(descriptor) {
-      localStorage.setItem('faceDescriptor', JSON.stringify(Array.from(descriptor)));
+    function saveDescriptor(desc) {
+      localStorage.setItem('faceDescriptor', JSON.stringify(Array.from(desc)));
+      console.log('Descriptor saved');
+    }
+    function loadDescriptor() {
+      const d = localStorage.getItem('faceDescriptor');
+      return d ? new Float32Array(JSON.parse(d)) : null;
     }
 
-    function loadDescriptor() {
-      const saved = localStorage.getItem('faceDescriptor');
-      return saved ? new Float32Array(JSON.parse(saved)) : null;
+    async function detectFace() {
+      return faceapi
+        .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions())
+        .withFaceLandmarks()
+        .withFaceDescriptor();
     }
 
     async function register() {
-      status.innerText = "סריקת פנים לרישום...";
-      const detection = await captureFace();
+      if (!modelsLoaded) return;
+      status.textContent = "📸 סורק פנים…";
+      const detection = await detectFace();
       if (!detection) {
-        status.innerText = "פנים לא זוהו.";
+        status.textContent = "⚠️ לא זוהו פנים, נסה שוב.";
         return;
       }
       saveDescriptor(detection.descriptor);
-      status.innerText = "הפנים נרשמו בהצלחה!";
+      status.textContent = "✅ פנים נרשמו!";
     }
 
     async function authenticate() {
-      status.innerText = "מנסה לזהות...";
+      if (!modelsLoaded) return;
+      status.textContent = "🔍 מנסה לזהות…";
       const saved = loadDescriptor();
       if (!saved) {
-        status.innerText = "לא נרשמו פנים.";
+        status.textContent = "⚠️ אין רישום קודם. בצע רישום פנים.";
         return;
       }
-      const detection = await captureFace();
+      const detection = await detectFace();
       if (!detection) {
-        status.innerText = "לא זוהו פנים.";
+        status.textContent = "⚠️ לא זוהו פנים, נסה שוב.";
         return;
       }
-
-      const distance = faceapi.euclideanDistance(detection.descriptor, saved);
-      if (distance < 0.45) {
-        status.innerText = "✔️ זוהית בהצלחה!";
-      } else {
-        status.innerText = "❌ הפנים לא תואמות.";
-      }
+      const dist = faceapi.euclideanDistance(detection.descriptor, saved);
+      console.log('Distance:', dist);
+      status.textContent = dist < 0.45
+        ? `✔️ זוהית! מרחק: ${dist.toFixed(3)}`
+        : `❌ לא תואם. מרחק: ${dist.toFixed(3)}`;
     }
 
-    async function captureFace() {
-      const result = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks().withFaceDescriptor();
-      return result;
-    }
+    registerBtn.addEventListener('click', register);
+    authBtn.addEventListener('click', authenticate);
 
-    window.addEventListener('load', async () => {
+    (async () => {
       await loadModels();
-      await startVideo();
-      storedDescriptor = loadDescriptor();
-    });
+      const ok = await startVideo();
+      if (ok && modelsLoaded) status.textContent = "📸 מצלמה פעילה! לחץ רישום או זיהוי.";
+    })();
   </script>
 </body>
 </html>
